@@ -1,8 +1,19 @@
+import { RouteGuard } from "@/components/auth/route-guard";
 import { Metadata } from "next";
+
 export const metadata: Metadata = {
-  title: "Welcome ",
-  description: "Auth",
+  title: "Authentication",
+  description: "Login or register to access your account",
 };
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+
+export default function AuthLayout({ 
+  children 
+}: { 
+  children: React.ReactNode 
+}) {
+  return (
+    <RouteGuard requireAuth={false} redirectTo="/">
+      {children}
+    </RouteGuard>
+  );
 }

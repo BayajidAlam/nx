@@ -1,235 +1,202 @@
 "use client";
 
-import {
-  Alert,
-  AlertDescription,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui";
-
-import { cn } from "@/lib/utils";
+import { Button, Form, FormControl, FormField, FormItem, FormMessage, Input } from "@/components/ui";
+import { useResendOtpMutation, useVerifyOtpMutation } from "@/redux/api/auth/auth.api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { OtpFormSchema, OtpFormValues } from "../schemas/otp-schema";
+import { toast } from "sonner";
+import { z } from "zod";
+
+const otpSchema = z.object({
+  otp: z.string().min(6, "OTP must be 6 digits").max(6, "OTP must be 6 digits"),
+});
+
+type OtpFormValues = z.infer<typeof otpSchema>;
 
 interface OTPVerificationStepProps {
-  onBack: () => void;
   onNext: (token: string) => void;
-  className?: string;
+  onBack: () => void;
+  phone?: string;
 }
 
-export default function OTPVerificationStep({
-  onBack,
-  onNext,
-  className,
-}: OTPVerificationStepProps) {
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [countdown, setCountdown] = useState(60);
+export default function OTPVerificationStep({ onNext, onBack, phone }: OTPVerificationStepProps) {
+  const [countdown, setCountdown] = useState(300); // 5 minutes
+  const [canResend, setCanResend] = useState(false);
 
-  // Initialize form
+  const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
+  const [resendOtp, { isLoading: isResending }] = useResendOtpMutation();
+
   const form = useForm<OtpFormValues>({
-    resolver: zodResolver(OtpFormSchema),
-    defaultValues: {
-      otp: "",
-    },
+    resolver: zodResolver(otpSchema),
+    defaultValues: { otp: "" },
   });
 
-  // Watch OTP value for submit button state
-  const otpValue = form.watch("otp");
-
-  // Handle form submission
-  async function handleSubmit(values: OtpFormValues) {
-    setLoading(true);
-    setError("");
-
-    const otp = Number(values.otp);
-
-    if (isNaN(otp)) {
-      setError("OTP must be a valid number.");
-      setLoading(false);
-      return;
-    }
-
-    onNext("hello");
-  }
-
-  // Handle resend
-  const handleResendOTP = async () => {
-    setResending(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      setSuccess("OTP resent successfully!");
-      setCountdown(60);
-      form.reset();
-    } catch (err) {
-      setError("Failed to resend OTP");
-      console.log(err);
-    } finally {
-      setResending(false);
-    }
-  };
-
+  // Countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
     }
   }, [countdown]);
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const onSubmit = async (values: OtpFormValues) => {
+    try {
+      const result = await verifyOtp({ 
+        phone: phone || "", 
+        otp: values.otp 
+      }).unwrap();
+      
+      if (result.success) {
+        toast.success(result.message || "OTP verified successfully!");
+        onNext(result.token);
+      }
+    } catch (error: any) {
+      console.error("Verify OTP error:", error);
+      const errorMessage = 
+        error?.data?.error?.message || 
+        error?.data?.message || 
+        error?.message || 
+        "Invalid or expired OTP. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!phone) {
+      toast.error("Phone number not found");
+      return;
+    }
+
+    try {
+      const result = await resendOtp({ phone }).unwrap();
+      if (result.success) {
+        toast.success(result.message || "OTP resent successfully!");
+        setCountdown(300);
+        setCanResend(false);
+        form.reset();
+      }
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+      const errorMessage = 
+        error?.data?.error?.message || 
+        error?.data?.message || 
+        error?.message || 
+        "Failed to resend OTP. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
   return (
-    <div
-      className={cn(
-        "min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background to-muted",
-        className
-      )}
-    >
-      <Card className="w-full max-w-md border-0 rounded-2xl">
-        <CardHeader>
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Verify OTP
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Please enter the 6-digit code sent to your phone
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background to-muted">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Verify Your Phone
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter the 6-digit code sent to your phone
+          </p>
+          {phone && (
+            <p className="text-sm font-medium text-primary">
+              {phone}
             </p>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 sm:p-8 space-y-6">
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleSubmit)}
-              className="space-y-6 sm:space-y-8"
-            >
-              {/* OTP Input using shadcn InputOTP */}
-              <FormField
-                control={form.control}
-                name="otp"
-                render={({ field }) => (
-                  <FormItem className="space-y-4">
-                    <FormControl>
-                      <div className="flex justify-center">
-                        <InputOTP
-                          maxLength={6}
-                          value={field.value}
-                          onChange={field.onChange}
-                          className="gap-2 sm:gap-3 lg:gap-4"
-                        >
-                          <InputOTPGroup className="gap-2 sm:gap-3 lg:gap-4">
-                            <InputOTPSlot
-                              index={0}
-                              className="w-12 h-12 text-lg font-medium border-2 rounded-lg"
-                            />
-                            <InputOTPSlot
-                              index={1}
-                              className="w-12 h-12  text-lg font-medium border-2 rounded-lg"
-                            />
-                            <InputOTPSlot
-                              index={2}
-                              className="w-12 h-12  text-lg font-medium border-2 rounded-lg"
-                            />
-                            <InputOTPSlot
-                              index={3}
-                              className="w-12 h-12  text-lg font-medium border-2 rounded-lg"
-                            />
-                            <InputOTPSlot
-                              index={4}
-                              className="w-12 h-12 text-lg font-medium border-2 rounded-lg"
-                            />
-                            <InputOTPSlot
-                              index={5}
-                              className="w-12 h-12 text-lg font-medium border-2 rounded-lg"
-                            />
-                          </InputOTPGroup>
-                        </InputOTP>
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-center text-sm " />
-                  </FormItem>
-                )}
-              />
+          )}
+        </div>
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="otp"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="Enter 6-digit OTP"
+                      disabled={isLoading}
+                      className="w-full px-4 py-4 text-xl text-center tracking-widest border border-border rounded-lg"
+                      maxLength={6}
+                      {...field}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        field.onChange(value);
+                      }}
+                    />
+                  </FormControl>
+                  {fieldState.error && (
+                    <FormMessage>{fieldState.error.message}</FormMessage>
+                  )}
+                </FormItem>
               )}
+            />
 
-              {success && (
-                <Alert>
-                  <AlertDescription className="text-green-600">
-                    {success}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Resend Section */}
-              <div className="text-center">
+            {/* Timer and Resend */}
+            <div className="text-center space-y-2">
+              {!canResend ? (
+                <p className="text-sm text-muted-foreground">
+                  Resend OTP in {formatTime(countdown)}
+                </p>
+              ) : (
                 <Button
                   type="button"
                   variant="link"
-                  onClick={handleResendOTP}
-                  disabled={resending || countdown > 0}
-                  className="text-sm cursor-pointer"
+                  onClick={handleResendOtp}
+                  disabled={isResending}
+                  className="text-sm"
                 >
-                  {resending ? (
+                  {isResending ? (
                     <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                       Resending...
                     </>
-                  ) : countdown > 0 ? (
-                    `Resend in ${countdown}s`
                   ) : (
                     "Resend OTP"
                   )}
                 </Button>
-              </div>
+              )}
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onBack}
-                  className="flex-1 w-full opacity-95 hover:opacity-100  font-medium py-3 sm:py-4 px-6 text-base sm:text-lg rounded-lg transition-colors duration-200 shadow-sm !cursor-pointer"
-                >
-                  Back
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 w-full opacity-95 hover:opacity-100  font-medium py-3 sm:py-4 px-6 text-base sm:text-lg rounded-lg transition-colors duration-200 shadow-sm !cursor-pointer"
-                  disabled={otpValue.length !== 6 || loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    "Verify OTP"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button 
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={onBack}
+                disabled={isLoading}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <Button 
+                className="flex-1" 
+                type="submit" 
+                disabled={isLoading || form.watch("otp").length !== 6}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify OTP"
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }

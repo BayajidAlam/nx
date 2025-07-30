@@ -1,33 +1,38 @@
 "use client";
-import Link from "next/link";
 
-import { DarkModeSwitch } from "@/components/shared/dark-mode/dark-mode-switch";
-import FullscreenButton from "@/components/shared/full-screen-button/full-screen-button";
-import SidebarToggler from "@/components/shared/sidebar-toggler/sidebar-toggler";
-import { UserMenu } from "../user-menu/user-menu";
+import { AuthWrapper } from "@/components/auth/auth-wrapper";
+import { Button } from "@/components/ui";
+import { useAppDispatch, useAppSelector } from "@/hooks/use-store";
+import { toggleSidebar } from "@/redux/slices/sidebar/sidebar.slice";
+import { Menu } from "lucide-react";
+import UserMenu from "../user-menu/user-menu";
 
 export default function Navbar() {
+  const dispatch = useAppDispatch();
+  const { isSidebarOpen } = useAppSelector((state) => state.sidebar);
+
   return (
-    <header className="sticky top-0 z-10 flex w-full border-b border-border bg-muted">
-      <div className="flex flex-grow items-center justify-between px-4 py-3 shadow-2 ">
-        <div className="flex flex-row items-center justify-between gap-2 w-full max-w-[14.5rem] 2xl:max-w-[13.5rem] pl-4">
-          <div className="">
-            <Link href={"/"} className="flex items-center justify-center gap-1">
-              <div className="font-medium text-md">IMS PORTAL</div>
-            </Link>
-          </div>
-          <div className="flex justify-center items-center gap-3">
-            <SidebarToggler />
-          </div>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center justify-between px-4">
+        {/* Left side - Sidebar toggle */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => dispatch(toggleSidebar())}
+            className="h-9 w-9"
+          >
+            <Menu className="h-4 w-4" />
+            <span className="sr-only">Toggle sidebar</span>
+          </Button>
+          
+          <h1 className="text-lg font-semibold">Dashboard</h1>
         </div>
 
-        <div className="flex items-center gap-1 lg:gap-4 2xsm:gap-7">
-          {/* <!-- Dark Mode Toggler --> */}
-          <DarkModeSwitch />
-
-          <FullscreenButton />
+        {/* Right side - User menu */}
+        <AuthWrapper>
           <UserMenu />
-        </div>
+        </AuthWrapper>
       </div>
     </header>
   );

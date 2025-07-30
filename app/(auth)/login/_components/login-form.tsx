@@ -1,22 +1,25 @@
-import {
-  Button,
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  Input,
-} from "@/components/ui";
+// app/(auth)/login/_components/login-form.tsx
+"use client";
+
+import { Button, Form, FormControl, FormField, FormItem, FormMessage, Input } from "@/components/ui";
+import { useAppDispatch } from "@/hooks/use-store";
+import { loginSuccess } from "@/redux/slices/auth/auth.slice";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { loginFormSchema, loginFormValues } from "../schemas/login-form-schema";
+import { toast } from "sonner";
+import { loginFormSchema, type loginFormValues } from "../schemas/login-form-schema";
+import { useUserLoginMutation } from "@/redux/api/auth/auth.api";
+
 export default function LoginForm() {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const [userLogin, { isLoading }] = useUserLoginMutation();
 
   const form = useForm<loginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -26,33 +29,50 @@ export default function LoginForm() {
     },
   });
 
-  const onSubmit = async (data: loginFormValues) => {
-    setIsLoading(true);
-    console.log(data);
-    setIsLoading(false);
+  const onSubmit = async (values: loginFormValues) => {
+    try {
+      const result = await userLogin(values).unwrap();
+      
+      if (result.success) {
+        // Store token and update auth state
+        dispatch(loginSuccess(result.token));
+        
+        toast.success(result.message || "Login successful!");
+        
+        // Redirect to dashboard
+        router.push("/");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      
+      // Handle different error types
+      const errorMessage = 
+        error?.data?.error?.message || 
+        error?.data?.message || 
+        error?.message || 
+        "Login failed. Please try again.";
+      
+      toast.error(errorMessage);
+    }
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Phone Field */}
         <FormField
           control={form.control}
           name="phone"
           render={({ field, fieldState }) => (
             <FormItem>
-              <FormLabel className="text-base font-medium ">
-                Mobile Number
-              </FormLabel>
               <FormControl>
-                <div className="relative mt-2">
-                  <Input
-                    type="tel"
-                    placeholder="e.g. 017 00 - 00 00 00"
-                    disabled={isLoading}
-                    className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
-                    {...field}
-                  />
-                </div>
+                <Input
+                  type="tel"
+                  placeholder="01700000000"
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
+                  {...field}
+                />
               </FormControl>
               {fieldState.error && (
                 <FormMessage>{fieldState.error.message}</FormMessage>
@@ -60,20 +80,20 @@ export default function LoginForm() {
             </FormItem>
           )}
         />
+
+        {/* Password Field */}
         <FormField
           control={form.control}
           name="password"
           render={({ field, fieldState }) => (
             <FormItem>
-              <FormLabel className="text-base font-medium ">Password</FormLabel>
               <FormControl>
-                <div className="relative mt-2">
+                <div className="relative">
                   <Input
-                    id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
+                    className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200 pr-12"
                     {...field}
                   />
 
@@ -83,9 +103,8 @@ export default function LoginForm() {
                     size="icon"
                     className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-muted-foreground"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -102,6 +121,7 @@ export default function LoginForm() {
           )}
         />
 
+        {/* Links */}
         <div className="flex justify-between items-center pt-2">
           <Button variant="link" asChild className="text-sm px-0 h-auto">
             <Link href="/forgot-password">Forgot password?</Link>
@@ -111,8 +131,20 @@ export default function LoginForm() {
           </Button>
         </div>
 
-        <Button className="w-full mt-2" type="submit">
-          {isLoading ? "wait..." : "Login"}
+        {/* Submit Button */}
+        <Button 
+          className="w-full mt-2" 
+          type="submit" 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Logging in...
+            </>
+          ) : (
+            "Login"
+          )}
         </Button>
       </form>
     </Form>

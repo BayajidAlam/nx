@@ -1,7 +1,7 @@
-export enum TAG_TYPES {
-  GLOBAL = "global",
-}
+export const TAG_TYPES = {
+  AUTH: "Auth",
+  USER: "User",
+  GLOBAL: "Global",
+} as const;
 
-export const tagTypesList = Object.values(TAG_TYPES).filter(
-  (value) => typeof value === "string"
-);
+export const tagTypesList = Object.values(TAG_TYPES);

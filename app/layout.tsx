@@ -1,41 +1,33 @@
-import { Toaster, TooltipProvider } from "@/components/ui";
-import { outfit } from "@/fonts/fonts";
-import { cn } from "@/lib/utils";
-import { ReduxProvider } from "@/providers/redux-provider";
-import { ThemeProvider } from "@/providers/theme-provider";
-import type { Metadata } from "next";
-import { Toaster as SonnerToaster } from "sonner";
+import { AuthProvider } from "@/components/providers/auth-provider";
+import { ReduxProvider } from "@/components/providers/redux-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
 
-export const metadata: Metadata = {
-  title: {
-    default: "School Management",
-    template: "%s | School Management",
-  },
-  description: "School Management",
-  keywords: ["School Management"],
-};
+const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html
-      lang="en"
-      className={cn("", outfit.variable)}
-      suppressHydrationWarning
-    >
-      <body className={cn("min-h-screen bg-background font-sans antialiased ")}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
         <ReduxProvider>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-            <TooltipProvider>{children}</TooltipProvider>
-          </ThemeProvider>
+          <AuthProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              <Toaster position="top-right" />
+            </ThemeProvider>
+          </AuthProvider>
         </ReduxProvider>
-
-        <Toaster />
-        <SonnerToaster />
       </body>
     </html>
   );

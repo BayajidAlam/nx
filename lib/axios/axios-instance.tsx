@@ -1,7 +1,6 @@
 import { envConfig } from "@/config/env-config";
 import { IGenericErrorResponse, ResponseSuccessType } from "@/types/common";
 import axios from "axios";
-import { getSession } from "next-auth/react";
 
 const axiosInstance = axios.create({
   baseURL: envConfig.backendUrl,
@@ -13,29 +12,25 @@ axiosInstance.defaults.timeout = 100000;
 
 // Add a request interceptor
 axiosInstance.interceptors.request.use(
-  async function (config) {
-    // => Header Bearer Token
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const session: any = await getSession();
-
-    if (session) {
-      config.headers["Authorization"] = `Bearer ${session.accessToken}`;
+  function (config) {
+    // Get token from localStorage for client-side requests
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
     }
     return config;
   },
   function (error) {
     console.log(error);
-    // Do something with request error
     return Promise.reject(error);
   }
 );
 
-// Add a response interceptors
+// Add a response interceptor
 axiosInstance.interceptors.response.use(
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  //@ts-expect-error
   function (response) {
-    console.log(response);
     const responseObject: ResponseSuccessType = {
       data: response?.data?.data,
       meta: response?.data?.meta,
@@ -46,6 +41,13 @@ axiosInstance.interceptors.response.use(
   },
   async function (error) {
     console.log(error);
+    
+    // Handle token expiration
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("auth_token");
+      window.location.href = "/login";
+    }
+    
     const responseObject: IGenericErrorResponse = {
       error: {
         message:

@@ -1,72 +1,86 @@
-import { ChevronDown, LogOut, User } from "lucide-react";
-import Link from "next/link";
+"use client";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
+import { 
+  Avatar, 
+  AvatarFallback, 
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from "@/components/ui";
+import { useAppDispatch, useAppSelector } from "@/hooks/use-store";
+import { logout, selectUser } from "@/redux/slices/auth/auth.slice";
+import { LogOut, Settings, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-export interface UserMenuProps {
-  name?: string;
-  image?: string | null;
-  designation?: string;
-}
+export default function UserMenu() {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
 
-export function UserMenu({
-  name = "John Does",
-  image = null,
-  designation = "admin",
-}: UserMenuProps) {
-  console.log(name);
-  const fullName = name ?? "";
+  const handleLogout = () => {
+    dispatch(logout());
+    toast.success("Logged out successfully");
+    router.push("/login");
+  };
 
-  // Get initials for avatar fallback
-  const initials = fullName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join("");
+  const getInitials = (phone: string) => {
+    return phone.slice(-2).toUpperCase();
+  };
+
+  if (!user) return null;
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-3 rounded-md px-1.5 py-0.5 outline-none hover:bg-accent dark:hover:bg-white/10 !cursor-pointer">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9  bg-transparent cursor-pointer border border-border opacity-100">
-            <AvatarImage src={image ?? ""} alt={fullName} />
-            <AvatarFallback>{initials}</AvatarFallback>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className="bg-primary/10">
+              {getInitials(user.phone)}
+            </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col items-start -space-y-1">
-            <p className="text-sm font-medium text-foreground dark:text-white">
-              {fullName}
-            </p>
-            <p className="text-xs text-muted-foreground">{designation}</p>
-          </div>
-        </div>
-        <ChevronDown className=" h-4 w-4 text-muted-foreground dark:text-white" />
+        </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-48 dark:bg-background dark:border-white/60"
-      >
-        <DropdownMenuItem
-          asChild
-          className="dark:hover:bg-white/10 cursor-pointer"
-        >
-          <Link href="/settings" className="w-full text-end cursor-pointer">
-            <User className="mr-1 h-4 w-4" /> Edit Profile
-          </Link>
+      
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.phone}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.role === "admin" ? "Administrator" : user.role}
+            </p>
+            {user.eiin && (
+              <p className="text-xs leading-none text-muted-foreground">
+                EIIN: {user.eiin}
+              </p>
+            )}
+          </div>
+        </DropdownMenuLabel>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem onClick={() => router.push("/profile")}>
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {}}
-          className="text-red-600 focus:text-red-600  w-full text-end dark:hover:bg-white/10 cursor-pointer"
+        
+        <DropdownMenuItem onClick={() => router.push("/settings")}>
+          <Settings className="mr-2 h-4 w-4" />
+          <span>Settings</span>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem 
+          className="text-red-600 focus:text-red-600"
+          onClick={handleLogout}
         >
-          <LogOut className="mr-1 h-4 w-4" /> Log out
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
