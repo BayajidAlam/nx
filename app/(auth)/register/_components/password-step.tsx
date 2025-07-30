@@ -1,51 +1,58 @@
-// app/(auth)/register/_components/password-step.tsx - Updated
 "use client";
 
-import {  Button, Card, CardContent, Form, FormControl, FormField, FormItem, FormMessage, Input, Label } from "@/components/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Check, Eye, EyeOff, Loader2, X } from "lucide-react";
-import { useState } from "react";
+import { Check, Eye, EyeOff, Loader2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import {   passwordSchema, type PasswordFormValues } from "../schemas/password-schema";
+
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from "@/components/ui/";
+import { passwordRequirements } from "@/constants/password-requirements";
+import { cn } from "@/lib/utils";
 import { useSetPasswordMutation } from "@/redux/api/auth/auth.api";
+import {
+  passwordSchema,
+  PasswordFormValues,
+} from "../schemas/password-schema";
 
 interface PasswordStepProps {
   token: string;
   onComplete: () => void;
   onBack: () => void;
+  className?: string;
 }
 
-// Password requirements
-const passwordRequirements = [
-  {
-    id: "length",
-    label: "At least 6 characters",
-    test: (password: string) => password.length >= 6,
-  },
-  {
-    id: "uppercase",
-    label: "One uppercase letter",
-    test: (password: string) => /[A-Z]/.test(password),
-  },
-  {
-    id: "lowercase", 
-    label: "One lowercase letter",
-    test: (password: string) => /[a-z]/.test(password),
-  },
-  {
-    id: "number",
-    label: "One number",
-    test: (password: string) => /\d/.test(password),
-  },
-];
+export default function PasswordStep({
+  className,
+  onBack,
+  onComplete,
+  token,
+}: PasswordStepProps) {
+  // Redux hook
+  const [setPassword, { isLoading: isReduxLoading }] = useSetPasswordMutation();
 
-export default function PasswordStep({ token, onComplete, onBack }: PasswordStepProps) {
-  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
 
-  const [setPassword, { isLoading }] = useSetPasswordMutation();
-
+  // Initialize form
   const form = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
@@ -54,18 +61,30 @@ export default function PasswordStep({ token, onComplete, onBack }: PasswordStep
     },
   });
 
-  const currentPassword = form.watch("password");
+  // Watch the password field for real-time validation
+  const watchedPassword = form.watch("password");
 
-  const onSubmit = async (values: PasswordFormValues) => {
+  // Handle form submission
+  async function handleSubmit(values: PasswordFormValues) {
+    setLoading(true);
+    setError("");
+
     try {
-      // Set authorization header with the OTP token
+      // Call the Redux API with token in headers
       const result = await setPassword({ 
         password: values.password 
       }).unwrap();
       
       if (result.success) {
+        setSuccess("Password set successfully!");
         toast.success(result.message || "Password set successfully!");
-        onComplete();
+        
+        // Small delay to show success message
+        setTimeout(() => {
+          onComplete();
+        }, 1000);
+      } else {
+        throw new Error(result.message || "Failed to set password");
       }
     } catch (error: any) {
       console.error("Set password error:", error);
@@ -74,61 +93,82 @@ export default function PasswordStep({ token, onComplete, onBack }: PasswordStep
         error?.data?.message || 
         error?.message || 
         "Failed to set password. Please try again.";
+      
+      setError(errorMessage);
       toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    setCurrentPassword(watchedPassword || "");
+  }, [watchedPassword]);
+
+  // Use either local loading or Redux loading
+  const isSubmitting = loading || isReduxLoading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background to-muted">
+    <div
+      className={cn(
+        "min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background to-muted",
+        className
+      )}
+    >
       <Card className="w-full max-w-md border-0 rounded-2xl">
-        <CardContent className="p-6 sm:p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Set Your Password
+        <CardHeader>
+          <div className="space-y-2 sm:space-y-3 text-center">
+            <h1 className="text-2xl font-medium text-foreground leading-tight">
+              Great! your account is verified. Set your new password.
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Create a secure password for your account
-            </p>
           </div>
-
+        </CardHeader>
+        <CardContent className="p-6 sm:p-8 space-y-6">
+          {/* Form */}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* Password Field */}
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="space-y-6 sm:space-y-8"
+            >
+              {/* New Password Field */}
               <FormField
                 control={form.control}
                 name="password"
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <Label htmlFor="password">Password</Label>
+                render={({ field }) => (
+                  <FormItem className="space-y-2 sm:space-y-3">
+                    <FormLabel className="text-base font-medium text-foreground">
+                      New Password
+                    </FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div className="relative mt-2">
                         <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter your password"
-                          disabled={isLoading}
-                          className="w-full px-4 py-3 text-base border border-border rounded-lg pr-12"
+                          type={showNewPassword ? "text" : "password"}
+                          placeholder="Enter your new password"
+                          className="w-full px-4 py-3 text-base  border border-input rounded-lg bg-background   pr-12 focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
                           {...field}
+                          aria-describedby="new-password-requirements"
+                          disabled={isSubmitting}
                         />
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-                          onClick={() => setShowPassword(!showPassword)}
-                          disabled={isLoading}
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent cursor-pointer"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          aria-label={
+                            showNewPassword ? "Hide password" : "Show password"
+                          }
+                          disabled={isSubmitting}
                         >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
+                          {showNewPassword ? (
+                            <EyeOff className="h-4 w-4  text-muted-foreground" />
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4  text-muted-foreground" />
                           )}
                         </Button>
                       </div>
                     </FormControl>
-                    {fieldState.error && (
-                      <FormMessage>{fieldState.error.message}</FormMessage>
-                    )}
+                    <FormMessage className="text-sm " />
                   </FormItem>
                 )}
               />
@@ -137,50 +177,62 @@ export default function PasswordStep({ token, onComplete, onBack }: PasswordStep
               <FormField
                 control={form.control}
                 name="confirmPassword"
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                render={({ field }) => (
+                  <FormItem className="space-y-2 sm:space-y-3">
+                    <FormLabel className="text-base font-medium text-foreground">
+                      Confirm New Password
+                    </FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div className="relative mt-2">
                         <Input
-                          id="confirmPassword"
                           type={showConfirmPassword ? "text" : "password"}
-                          placeholder="Confirm your password"
-                          disabled={isLoading}
-                          className="w-full px-4 py-3 text-base border border-border rounded-lg pr-12"
+                          placeholder="Confirm your new password"
+                          className="w-full px-4 py-3 text-base border border-input rounded-lg bg-background pr-12 focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
+                          disabled={isSubmitting}
                           {...field}
                         />
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          disabled={isLoading}
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent cursor-pointer"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          aria-label={
+                            showConfirmPassword
+                              ? "Hide password"
+                              : "Show password"
+                          }
+                          disabled={isSubmitting}
                         >
                           {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4 text-muted-foreground" />
                           )}
                         </Button>
                       </div>
                     </FormControl>
-                    {fieldState.error && (
-                      <FormMessage>{fieldState.error.message}</FormMessage>
-                    )}
+                    <FormMessage className="text-sm " />
                   </FormItem>
                 )}
               />
 
               {/* Password Requirements */}
-              <div className="text-xs text-muted-foreground space-y-2">
+              <div
+                id="new-password-requirements"
+                className="text-xs text-muted-foreground space-y-2"
+              >
                 <p className="font-medium">Password must contain:</p>
                 <ul className="space-y-2">
                   {passwordRequirements.map((requirement) => {
                     const isMet = requirement.test(currentPassword);
                     return (
-                      <li key={requirement.id} className="flex items-center space-x-2">
+                      <li
+                        key={requirement.id}
+                        className="flex items-center space-x-2"
+                      >
                         <div
                           className={`flex items-center justify-center w-4 h-4 rounded-full transition-colors duration-200 ${
                             isMet
@@ -215,28 +267,42 @@ export default function PasswordStep({ token, onComplete, onBack }: PasswordStep
                 </ul>
               </div>
 
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {success && (
+                <Alert>
+                  <AlertDescription className="text-green-600">
+                    {success}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onBack}
-                  disabled={isLoading}
-                  className="flex-1"
+                  disabled={isSubmitting}
+                  className="flex-1 w-full opacity-95 hover:opacity-100  font-medium py-3 sm:py-4 px-6 text-base sm:text-lg rounded-lg transition-colors duration-200 shadow-sm !cursor-pointer"
                 >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
 
+                {/* Submit Button */}
                 <Button
                   type="submit"
-                  className="flex-1"
-                  disabled={isLoading}
+                  className="flex-1 w-full opacity-95 hover:opacity-100  font-medium py-3 sm:py-4 px-6 text-base sm:text-lg rounded-lg transition-colors duration-200 shadow-sm !cursor-pointer"
+                  disabled={isSubmitting}
                 >
-                  {isLoading ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Setting...
+                      Creating Account...
                     </>
                   ) : (
                     "Set Password"

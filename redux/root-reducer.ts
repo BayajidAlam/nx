@@ -8,5 +8,5 @@ export const rootReducer = combineReducers({
   auth: authReducer,
   sidebar: sidebarReducer,
   fullScreen: fullScreenReducer,
-  [baseApi.reducerPath]: baseApi.reducer,
+  api: baseApi.reducer, // Key must match reducerPath
 });

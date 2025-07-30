@@ -1,20 +1,8 @@
-// redux/slices/auth/auth.slice.ts
+// redux/slices/auth/auth.slice.ts - FIXED VERSION
+import { AuthState, User } from "@/types/auth";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
 
-export interface User {
-  userId: string;
-  phone: string;
-  role: string;
-  eiin?: string;
-}
-
-export interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-}
 
 // Decode JWT token to get user info
 const decodeToken = (token: string): User | null => {
@@ -26,12 +14,44 @@ const decodeToken = (token: string): User | null => {
   }
 };
 
-// Get token from localStorage safely (client-side only)
+// Get token from both localStorage and cookies
 const getStoredToken = (): string | null => {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("auth_token");
+    // Try localStorage first
+    let token = localStorage.getItem("auth_token");
+    
+    // If not in localStorage, try cookies
+    if (!token) {
+      token = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("auth_token="))
+        ?.split("=")[1] || null;
+    }
+    
+    return token;
   }
   return null;
+};
+
+// Store token in both localStorage and cookies
+const storeToken = (token: string) => {
+  if (typeof window !== "undefined") {
+    // Store in localStorage
+    localStorage.setItem("auth_token", token);
+    
+    // Store in cookies (expires in 7 days)
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 7);
+    document.cookie = `auth_token=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
+  }
+};
+
+// Remove token from both localStorage and cookies
+const removeToken = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("auth_token");
+    document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  }
 };
 
 // Initial state
@@ -55,11 +75,11 @@ export const authSlice = createSlice({
           state.token = token;
           state.user = user;
           state.isAuthenticated = true;
+          // Ensure token is stored in both places
+          storeToken(token);
         } else {
           // Token is invalid, remove it
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("auth_token");
-          }
+          removeToken();
         }
       }
       state.loading = false;
@@ -75,10 +95,8 @@ export const authSlice = createSlice({
         state.user = user;
         state.isAuthenticated = true;
         
-        // Store token in localStorage
-        if (typeof window !== "undefined") {
-          localStorage.setItem("auth_token", token);
-        }
+        // Store token in both localStorage and cookies
+        storeToken(token);
       }
       state.loading = false;
     },
@@ -90,10 +108,8 @@ export const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       
-      // Remove token from localStorage
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token");
-      }
+      // Remove token from both localStorage and cookies
+      removeToken();
     },
 
     // Set loading state

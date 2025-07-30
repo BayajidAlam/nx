@@ -1,24 +1,31 @@
-// app/(auth)/login/_components/login-form.tsx
-"use client";
-
-import { Button, Form, FormControl, FormField, FormItem, FormMessage, Input } from "@/components/ui";
+import {
+  Button,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from "@/components/ui";
 import { useAppDispatch } from "@/hooks/use-store";
 import { loginSuccess } from "@/redux/slices/auth/auth.slice";
+import { useUserLoginMutation } from "@/redux/api/auth/auth.api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { loginFormSchema, type loginFormValues } from "../schemas/login-form-schema";
-import { useUserLoginMutation } from "@/redux/api/auth/auth.api";
+import { loginFormSchema, loginFormValues } from "../schemas/login-form-schema";
 
 export default function LoginForm() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
   
+  // Redux hook
   const [userLogin, { isLoading }] = useUserLoginMutation();
 
   const form = useForm<loginFormValues>({
@@ -29,18 +36,31 @@ export default function LoginForm() {
     },
   });
 
-  const onSubmit = async (values: loginFormValues) => {
+  const onSubmit = async (data: loginFormValues) => {
     try {
-      const result = await userLogin(values).unwrap();
+      console.log("Login attempt with data:", data);
+      const result = await userLogin(data).unwrap();
+      
+      console.log("Login result:", result);
       
       if (result.success) {
         // Store token and update auth state
         dispatch(loginSuccess(result.token));
         
+        console.log("Token dispatched, checking localStorage...");
+        
+        // Check if token was stored
+        const storedToken = localStorage.getItem("auth_token");
+        console.log("Stored token:", storedToken);
+        
         toast.success(result.message || "Login successful!");
         
-        // Redirect to dashboard
-        router.push("/");
+        // Force navigation after a small delay
+        console.log("Attempting navigation to /...");
+        setTimeout(() => {
+          router.push("/");
+          console.log("Navigation attempted");
+        }, 500);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -58,21 +78,32 @@ export default function LoginForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {/* Phone Field */}
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault(); // CRITICAL: Prevent default form submission
+          console.log("Form submitted");
+          form.handleSubmit(onSubmit)(e);
+        }} 
+        className="space-y-4"
+      >
         <FormField
           control={form.control}
           name="phone"
           render={({ field, fieldState }) => (
             <FormItem>
+              <FormLabel className="text-base font-medium ">
+                Mobile Number
+              </FormLabel>
               <FormControl>
-                <Input
-                  type="tel"
-                  placeholder="01700000000"
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
-                  {...field}
-                />
+                <div className="relative mt-2">
+                  <Input
+                    type="tel"
+                    placeholder="e.g. 017 00 - 00 00 00"
+                    disabled={isLoading}
+                    className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
+                    {...field}
+                  />
+                </div>
               </FormControl>
               {fieldState.error && (
                 <FormMessage>{fieldState.error.message}</FormMessage>
@@ -80,20 +111,20 @@ export default function LoginForm() {
             </FormItem>
           )}
         />
-
-        {/* Password Field */}
         <FormField
           control={form.control}
           name="password"
           render={({ field, fieldState }) => (
             <FormItem>
+              <FormLabel className="text-base font-medium ">Password</FormLabel>
               <FormControl>
-                <div className="relative">
+                <div className="relative mt-2">
                   <Input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200 pr-12"
+                    className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg border border-border rounded-lg focus:outline-none focus:border-transparent focus:shadow transition-all duration-200"
                     {...field}
                   />
 
@@ -103,7 +134,9 @@ export default function LoginForm() {
                     size="icon"
                     className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-muted-foreground"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                     disabled={isLoading}
                   >
                     {showPassword ? (
@@ -121,7 +154,6 @@ export default function LoginForm() {
           )}
         />
 
-        {/* Links */}
         <div className="flex justify-between items-center pt-2">
           <Button variant="link" asChild className="text-sm px-0 h-auto">
             <Link href="/forgot-password">Forgot password?</Link>
@@ -131,20 +163,12 @@ export default function LoginForm() {
           </Button>
         </div>
 
-        {/* Submit Button */}
         <Button 
           className="w-full mt-2" 
           type="submit" 
           disabled={isLoading}
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Logging in...
-            </>
-          ) : (
-            "Login"
-          )}
+          {isLoading ? "wait..." : "Login"}
         </Button>
       </form>
     </Form>

@@ -57,6 +57,7 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
         data: credentials,
       }),
+      invalidatesTags: ["Auth"],
     }),
 
     // Admin login
@@ -66,6 +67,7 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
         data: credentials,
       }),
+      invalidatesTags: ["Auth"],
     }),
 
     // Send OTP for registration
@@ -142,6 +144,7 @@ export const authApi = baseApi.injectEndpoints({
   }),
 });
 
+// CRITICAL: These exports must be here for the hooks to work
 export const {
   useUserLoginMutation,
   useAdminLoginMutation,
