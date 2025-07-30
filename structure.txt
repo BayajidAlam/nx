@@ -1,0 +1,111 @@
+.
+├── app
+│   ├── (auth)
+│   │   ├── layout.tsx
+│   │   └── login
+│   ├── error.tsx
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── (home)
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── layout.tsx
+│   └── not-found.tsx
+├── bun.lock
+├── commitlint.config.js
+├── components
+│   ├── conditionals
+│   │   └── if.tsx
+│   ├── icons
+│   │   └── index.tsx
+│   ├── others
+│   │   ├── main
+│   │   ├── navbar
+│   │   ├── sidebar
+│   │   └── user-menu
+│   ├── providers
+│   │   ├── redux-provider.tsx
+│   │   └── theme-provider.tsx
+│   ├── shared
+│   │   ├── avatar-with-initials
+│   │   ├── badge-pill
+│   │   ├── bread-crumb
+│   │   ├── dark-mode
+│   │   ├── error-test
+│   │   ├── full-screen-button
+│   │   ├── sidebar-toggler
+│   │   ├── skeletons
+│   │   └── under-construction.tsx
+│   └── ui
+│       ├── alert
+│       ├── alert-dialog
+│       ├── avatar
+│       ├── badge
+│       ├── button
+│       ├── calender
+│       ├── card
+│       ├── checkbox
+│       ├── collapsible
+│       ├── command
+│       ├── dialog
+│       ├── drop-down
+│       ├── form
+│       ├── index.ts
+│       ├── input
+│       ├── input-otp
+│       ├── label
+│       ├── pagination
+│       ├── popover
+│       ├── radio-group
+│       ├── scroll-area
+│       ├── select
+│       ├── separator
+│       ├── skeleton
+│       ├── switch
+│       ├── table
+│       ├── tabs
+│       ├── textarea
+│       ├── toast
+│       └── tooltip
+├── components.json
+├── config
+│   ├── env-config
+│   │   └── index.ts
+│   └── shared-meta-data
+│       └── shared-meta-data.ts
+├── cspell.config.json
+├── eslint.config.mjs
+├── fonts
+│   └── fonts.ts
+├── hooks
+│   ├── use-debounced.ts
+│   ├── use-form-autosave.ts
+│   ├── use-full-screen.ts
+│   ├── use-store.ts
+│   └── use-toast.ts
+├── lib
+│   └── utils.ts
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── providers
+│   ├── redux-provider.tsx
+│   └── theme-provider.tsx
+├── README.md
+├── redux
+│   ├── base-api.ts
+│   ├── root-reducer.ts
+│   ├── slices
+│   │   ├── full-screen
+│   │   └── sidebar
+│   ├── store.ts
+│   └── tag-types.ts
+├── structure.txt
+├── tsconfig.json
+└── types
+    ├── api-payload.ts
+    ├── api-response.ts
+    ├── common.ts
+    └── index.ts

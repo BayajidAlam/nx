@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "autoplay",
+    "cmdk",
+    "embla",
+    "Embla",
+    "embla-carousel-autoplay",
+    "embla-carousel-react",
+    "esbenp",
+    "turbopack",
+    "usehooks"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    "dist",
+    "build",
+    "public",
+    "public/**",
+    "public/**/*"
+  ]
+}
