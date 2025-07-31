@@ -1,11 +1,10 @@
 import { axiosBaseQuery } from "@/lib/axios/axios-base-query";
-import { createApi } from "@reduxjs/toolkit/query/react"; 
+import { createApi } from "@reduxjs/toolkit/query";
 import { tagTypesList } from "./tag-types";
 
 export const baseApi = createApi({
-  reducerPath: "api", 
+  reducerPath: "",
   baseQuery: axiosBaseQuery(),
   endpoints: () => ({}),
   tagTypes: tagTypesList,
-  keepUnusedDataFor: 60,
 });

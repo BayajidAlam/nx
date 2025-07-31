@@ -1,5 +1,6 @@
+// app/layout.tsx - FIXED IMPORTS
 import { AuthProvider } from "@/components/providers/auth-provider";
-import { ReduxProvider } from "@/components/providers/redux-provider";
+import { ReduxProvider } from "@/components/providers/redux-provider"; // Only this one
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Inter } from "next/font/google";
 import "./globals.css";

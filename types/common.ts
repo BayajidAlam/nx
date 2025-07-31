@@ -1,3 +1,4 @@
+// types/common.ts - Updated to include token
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface IMeta {
   limit: number;
@@ -10,6 +11,8 @@ export type ResponseSuccessType<T = any> = {
   data: T;
   meta?: IMeta;
   message: string;
+  token?: string; // FIX: Add token field
+  refreshToken?: string; // FIX: Add refreshToken field
   error?: {
     message: string;
   };

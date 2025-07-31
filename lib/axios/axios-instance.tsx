@@ -1,3 +1,4 @@
+// lib/axios/axios-instance.tsx - FIXED VERSION
 import { envConfig } from "@/config/env-config";
 import { IGenericErrorResponse, ResponseSuccessType } from "@/types/common";
 import axios from "axios";
@@ -31,16 +32,26 @@ axiosInstance.interceptors.request.use(
 // Add a response interceptor
 axiosInstance.interceptors.response.use(
   function (response) {
+    console.log("🔄 Axios response:", response.data); // Debug log
+    
+    // CRITICAL: Preserve ALL fields from response, especially token
     const responseObject: ResponseSuccessType = {
       data: response?.data?.data,
       meta: response?.data?.meta,
       success: response?.data?.success,
       message: response?.data?.message,
+      // FIX: Preserve token and other fields
+      token: response?.data?.token,
+      refreshToken: response?.data?.refreshToken,
+      // Spread all other fields to avoid missing anything
+      ...response?.data,
     };
+    
+    console.log("✅ Processed response object:", responseObject); // Debug log
     return responseObject;
   },
   async function (error) {
-    console.log(error);
+    console.log("❌ Axios error:", error);
     
     // Handle token expiration
     if (error.response?.status === 401 && typeof window !== "undefined") {

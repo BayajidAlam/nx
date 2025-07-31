@@ -1,3 +1,4 @@
+// hooks/use-store.ts - FIXED WITH DEBUGGING
 import { store } from "@/redux/store";
 import type { TypedUseSelectorHook } from "react-redux";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,3 +8,10 @@ export type RootState = ReturnType<typeof store.getState>;
 
 export const useAppDispatch: () => AppDispatch = useDispatch;
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+// Add debugging helper
+export const useDebugStore = () => {
+  const state = useSelector((state: RootState) => state);
+  console.log("🐛 Current Redux state:", state);
+  return state;
+};
