@@ -1,3 +1,4 @@
+import { RootState } from "@/redux/root-reducer";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
 
@@ -25,19 +26,20 @@ const decodeToken = (token: string): User | null => {
   }
 };
 
-// Store token in both localStorage and cookies
+// Store access token (refresh token is httpOnly cookie managed by server)
 const storeToken = (token: string) => {
   if (typeof window !== "undefined") {
     try {
-      // Store in localStorage
+      // Store access token in localStorage
       localStorage.setItem("auth_token", token);
       
-      // Store in cookies for middleware
+      // Also store in regular cookie for middleware compatibility
       const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 7);
+      expirationDate.setDate(expirationDate.getDate() + 1); // 1 day to match backend
       document.cookie = `auth_token=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
       
-      console.log("✅ Token stored successfully");
+      console.log("✅ Access token stored successfully");
+      console.log("🍪 Refresh token managed by server as httpOnly cookie");
     } catch (error) {
       console.error("❌ Failed to store token:", error);
     }
@@ -57,12 +59,22 @@ const getStoredToken = (): string | null => {
   return null;
 };
 
-// Remove token from both places
+// Check if refresh token exists in cookies
+const hasRefreshToken = (): boolean => {
+  if (typeof window !== "undefined") {
+    return document.cookie.includes('refresh_token=');
+  }
+  return false;
+};
+
+// Remove tokens (access token from localStorage, refresh token cookie cleared by server)
 const removeToken = () => {
   if (typeof window !== "undefined") {
     try {
       localStorage.removeItem("auth_token");
       document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      // Note: refresh_token cookie should be cleared by server on logout
+      console.log("🧹 Access token removed, refresh token cookie should be cleared by server");
     } catch (error) {
       console.error("Failed to remove token:", error);
     }
@@ -81,28 +93,34 @@ export const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    // Initialize auth state (check for stored token)
+    // Initialize auth state (check for stored token and refresh token cookie)
     initializeAuth: (state) => {
       console.log("🔄 Initializing auth state...");
       const token = getStoredToken();
+      const hasRefresh = hasRefreshToken();
+      
+      console.log("📱 Access token in localStorage:", !!token);
+      console.log("🍪 Refresh token cookie exists:", hasRefresh);
       
       if (token) {
-        console.log("📱 Found stored token");
         const user = decodeToken(token);
         
         if (user) {
-          console.log("✅ Token is valid, user:", user);
+          console.log("✅ Access token is valid, user:", user);
           state.token = token;
           state.user = user;
           state.isAuthenticated = true;
-          // Ensure token is stored in both places
+          // Ensure token is stored properly
           storeToken(token);
         } else {
-          console.log("❌ Token is invalid, removing...");
+          console.log("❌ Access token is invalid, removing...");
           removeToken();
         }
+      } else if (hasRefresh) {
+        console.log("🔄 No access token but refresh token exists - will attempt refresh on next API call");
+        // Don't set authenticated yet, let the axios interceptor handle refresh
       } else {
-        console.log("ℹ️ No stored token found");
+        console.log("ℹ️ No tokens found");
       }
       
       state.loading = false;
@@ -113,7 +131,7 @@ export const authSlice = createSlice({
     loginSuccess: (state, action: PayloadAction<string>) => {
       console.log("🚀 Login success action triggered");
       const token = action.payload;
-      console.log("🔑 Received token:", token);
+      console.log("🔑 Received access token:", token);
       
       const user = decodeToken(token);
       
@@ -124,10 +142,11 @@ export const authSlice = createSlice({
         state.user = user;
         state.isAuthenticated = true;
         
-        // Store token in both localStorage and cookies
+        // Store access token (refresh token already set as httpOnly cookie by server)
         storeToken(token);
         
         console.log("✅ Login state updated successfully");
+        console.log("🍪 Refresh token should be set as httpOnly cookie by server");
       } else {
         console.log("❌ Failed to decode token");
       }
@@ -143,9 +162,24 @@ export const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       
-      // Remove token from both localStorage and cookies
+      // Remove access token (server should clear refresh token cookie)
       removeToken();
-      console.log("✅ Logout complete");
+      console.log("✅ Logout complete - server should clear refresh token cookie");
+    },
+
+    // Token refresh success (when axios interceptor refreshes token)
+    tokenRefreshed: (state, action: PayloadAction<string>) => {
+      console.log("🔄 Token refreshed successfully");
+      const token = action.payload;
+      const user = decodeToken(token);
+      
+      if (user) {
+        state.token = token;
+        state.user = user;
+        state.isAuthenticated = true;
+        storeToken(token);
+        console.log("✅ Token refresh state updated");
+      }
     },
 
     // Set loading state
@@ -166,14 +200,20 @@ export const {
   initializeAuth,
   loginSuccess,
   logout,
+  tokenRefreshed,
   setLoading,
   updateUser,
 } = authSlice.actions;
 
 export default authSlice.reducer;
 
-// Selectors
-export const selectAuth = (state: { auth: AuthState }) => state.auth;
+// Enhanced selectors with proper typing
 export const selectUser = (state: { auth: AuthState }) => state.auth.user;
-export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
-export const selectAuthLoading = (state: { auth: AuthState }) => state.auth.loading;
+
+export const selectAuth = (state: RootState) => {
+  console.log("🔍 selectAuth called, state.auth:", state.auth);
+  return state.auth;
+};
+
+export const selectIsAuthenticated = (state: RootState) => state.auth?.isAuthenticated || false;
+export const selectAuthLoading = (state: RootState) => state.auth?.loading || true;

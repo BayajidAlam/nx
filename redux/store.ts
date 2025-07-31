@@ -1,8 +1,22 @@
-// redux/store.ts - COMPLETELY FIXED VERSION
+// redux/store.ts - FIXED STORE CONFIGURATION
 import { configureStore } from "@reduxjs/toolkit";
 import { baseApi } from "./base-api";
-import { globalInvalidationMiddleware } from "./middlewares/global-invalidation";
-import { rootReducer } from "./root-reducer";
+import { rootReducer, type RootState } from "./root-reducer";
+
+// Try to import global invalidation middleware, fallback if not found
+let globalInvalidationMiddleware;
+try {
+  const middlewareModule = await import("./middlewares/global-invalidation");
+  globalInvalidationMiddleware = middlewareModule.globalInvalidationMiddleware;
+} catch (error) {
+  console.log("Global invalidation middleware not found, skipping");
+  globalInvalidationMiddleware = undefined;
+}
+
+const middlewares = [baseApi.middleware];
+if (globalInvalidationMiddleware) {
+  middlewares.push(globalInvalidationMiddleware);
+}
 
 export const store = configureStore({
   reducer: rootReducer,
@@ -11,17 +25,14 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: ["persist/PERSIST", "persist/REHYDRATE"],
       },
-    }).concat(
-      baseApi.middleware,
-      globalInvalidationMiddleware
-    ),
+    }).concat(middlewares),
   devTools: process.env.NODE_ENV !== "production",
 });
 
-export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+export type { RootState };
 
-// Add this for debugging
+// Debug: Log initial state
 if (typeof window !== "undefined") {
-  console.log("🏪 Redux store initialized:", store.getState());
+  console.log("🏪 Redux store initialized with state:", store.getState());
 }

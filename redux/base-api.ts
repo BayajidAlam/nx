@@ -1,10 +1,9 @@
 import { axiosBaseQuery } from "@/lib/axios/axios-base-query";
-import { createApi } from "@reduxjs/toolkit/query";
-import { tagTypesList } from "./tag-types";
+import { createApi } from "@reduxjs/toolkit/query/react";
 
 export const baseApi = createApi({
-  reducerPath: "",
+  reducerPath: "api",
   baseQuery: axiosBaseQuery(),
   endpoints: () => ({}),
-  tagTypes: tagTypesList,
+  tagTypes: ["Auth", "User"],
 });

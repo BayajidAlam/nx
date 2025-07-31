@@ -8,7 +8,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   success: boolean;
   message: string;
-  token: string;
+  token: string; // Access token
+  // Note: refresh_token is set as httpOnly cookie, not in response
 }
 
 export interface SendOtpRequest {
@@ -43,6 +44,12 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface RefreshTokenResponse {
+  success: boolean;
+  message: string;
+  token: string; // New access token
+}
+
 export interface ApiResponse {
   success: boolean;
   message: string;
@@ -66,6 +73,25 @@ export const authApi = baseApi.injectEndpoints({
         url: "/auth/admin/login",
         method: "POST",
         data: credentials,
+      }),
+      invalidatesTags: ["Auth"],
+    }),
+
+    // Refresh access token using httpOnly refresh token cookie
+    refreshToken: builder.mutation<RefreshTokenResponse, void>({
+      query: () => ({
+        url: "/auth/refresh-token",
+        method: "POST",
+        data: {}, // Empty body, refresh token comes from httpOnly cookie
+      }),
+    }),
+
+    // Logout (should clear refresh token cookie on server)
+    logout: builder.mutation<ApiResponse, void>({
+      query: () => ({
+        url: "/auth/logout",
+        method: "POST",
+        data: {},
       }),
       invalidatesTags: ["Auth"],
     }),
@@ -144,10 +170,12 @@ export const authApi = baseApi.injectEndpoints({
   }),
 });
 
-// CRITICAL: These exports must be here for the hooks to work
+// Export all hooks
 export const {
   useUserLoginMutation,
   useAdminLoginMutation,
+  useRefreshTokenMutation,
+  useLogoutMutation,
   useSendOtpMutation,
   useVerifyOtpMutation,
   useSetPasswordMutation,

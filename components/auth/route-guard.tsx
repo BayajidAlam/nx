@@ -1,4 +1,3 @@
-// components/auth/route-guard.tsx - FIXED WITH ERROR HANDLING
 "use client";
 
 import { useAppSelector } from "@/hooks/use-store";
@@ -19,39 +18,30 @@ export function RouteGuard({
 }: RouteGuardProps) {
   const router = useRouter();
   
-  // Add error handling for Redux selector
+  // Get auth state with error handling
   let authState;
   try {
     authState = useAppSelector(selectAuth);
     console.log("🛡️ Route Guard - Auth state:", authState);
   } catch (error) {
     console.error("❌ Route Guard - Redux selector error:", error);
-    console.log("🔍 Trying to debug Redux state...");
     
-    // Fallback - show loading
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Initializing authentication...</p>
-        </div>
-      </div>
-    );
+    // Fallback - check localStorage directly
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token");
+      authState = {
+        isAuthenticated: !!token,
+        loading: false,
+        user: null,
+        token: token,
+      };
+      console.log("📱 Route Guard - Using localStorage fallback:", authState);
+    } else {
+      authState = { isAuthenticated: false, loading: true, user: null, token: null };
+    }
   }
 
-  // If authState is undefined, something is wrong with Redux
-  if (!authState) {
-    console.error("❌ Auth state is undefined! Redux store issue.");
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center text-red-600">
-          <p>Authentication system error. Please refresh the page.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const { isAuthenticated = false, loading = true } = authState;
+  const { isAuthenticated = false, loading = true } = authState || {};
 
   useEffect(() => {
     console.log("🔄 Route Guard effect - Auth:", { isAuthenticated, loading, requireAuth });

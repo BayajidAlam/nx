@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Button,
   Form,
@@ -8,15 +10,26 @@ import {
   FormMessage,
   Input,
 } from "@/components/ui";
+import { useAppDispatch, useAppSelector } from "@/hooks/use-store";
+import { loginSuccess, selectAuth } from "@/redux/slices/auth/auth.slice";
+import { useUserLoginMutation } from "@/redux/api/auth/auth.api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { loginFormSchema, loginFormValues } from "../schemas/login-form-schema";
+
 export default function LoginForm() {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Redux hooks
+  const [userLogin, { isLoading }] = useUserLoginMutation();
+  const authState = useAppSelector(selectAuth);
 
   const form = useForm<loginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -26,10 +39,45 @@ export default function LoginForm() {
     },
   });
 
+  // Debug: Watch auth state changes
+  useEffect(() => {
+    console.log("🔍 Auth state changed:", authState);
+  }, [authState]);
+
   const onSubmit = async (data: loginFormValues) => {
-    setIsLoading(true);
-    console.log(data);
-    setIsLoading(false);
+    try {
+      console.log("📤 Submitting login with data:", data);
+      
+      const result = await userLogin(data).unwrap();
+      console.log("📥 Login API result:", result);
+      
+      if (result.success && result.token) {
+        console.log("✅ Login successful, dispatching loginSuccess...");
+        
+        // Store token and update auth state
+        dispatch(loginSuccess(result.token));
+        
+        toast.success(result.message || "Login successful!");
+        
+        // Navigate after small delay
+        setTimeout(() => {
+          console.log("🔍 Final localStorage check:", localStorage.getItem("auth_token"));
+          router.push("/");
+        }, 200);
+      } else {
+        throw new Error("No token received from server");
+      }
+    } catch (error: any) {
+      console.error("❌ Login error:", error);
+      
+      // Handle different error types
+      const errorMessage = 
+        error?.error?.message || 
+        error?.message || 
+        "Login failed. Please try again.";
+      
+      toast.error(errorMessage);
+    }
   };
 
   return (
@@ -86,6 +134,7 @@ export default function LoginForm() {
                     aria-label={
                       showPassword ? "Hide password" : "Show password"
                     }
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -111,7 +160,7 @@ export default function LoginForm() {
           </Button>
         </div>
 
-        <Button className="w-full mt-2" type="submit">
+        <Button className="w-full mt-2" type="submit" disabled={isLoading}>
           {isLoading ? "wait..." : "Login"}
         </Button>
       </form>
