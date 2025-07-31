@@ -1,8 +1,19 @@
-// redux/slices/auth/auth.slice.ts - FIXED VERSION
-import { AuthState, User } from "@/types/auth";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
 
+export interface User {
+  userId: string;
+  phone: string;
+  role: string;
+  eiin?: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+}
 
 // Decode JWT token to get user info
 const decodeToken = (token: string): User | null => {
@@ -14,43 +25,47 @@ const decodeToken = (token: string): User | null => {
   }
 };
 
-// Get token from both localStorage and cookies
+// Store token in both localStorage and cookies
+const storeToken = (token: string) => {
+  if (typeof window !== "undefined") {
+    try {
+      // Store in localStorage
+      localStorage.setItem("auth_token", token);
+      
+      // Store in cookies for middleware
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 7);
+      document.cookie = `auth_token=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
+      
+      console.log("✅ Token stored successfully");
+    } catch (error) {
+      console.error("❌ Failed to store token:", error);
+    }
+  }
+};
+
+// Get token from localStorage safely (client-side only)
 const getStoredToken = (): string | null => {
   if (typeof window !== "undefined") {
-    // Try localStorage first
-    let token = localStorage.getItem("auth_token");
-    
-    // If not in localStorage, try cookies
-    if (!token) {
-      token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("auth_token="))
-        ?.split("=")[1] || null;
+    try {
+      return localStorage.getItem("auth_token");
+    } catch (error) {
+      console.error("Failed to get token:", error);
+      return null;
     }
-    
-    return token;
   }
   return null;
 };
 
-// Store token in both localStorage and cookies
-const storeToken = (token: string) => {
-  if (typeof window !== "undefined") {
-    // Store in localStorage
-    localStorage.setItem("auth_token", token);
-    
-    // Store in cookies (expires in 7 days)
-    const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + 7);
-    document.cookie = `auth_token=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
-  }
-};
-
-// Remove token from both localStorage and cookies
+// Remove token from both places
 const removeToken = () => {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("auth_token");
-    document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    try {
+      localStorage.removeItem("auth_token");
+      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    } catch (error) {
+      console.error("Failed to remove token:", error);
+    }
   }
 };
 
@@ -68,41 +83,61 @@ export const authSlice = createSlice({
   reducers: {
     // Initialize auth state (check for stored token)
     initializeAuth: (state) => {
+      console.log("🔄 Initializing auth state...");
       const token = getStoredToken();
+      
       if (token) {
+        console.log("📱 Found stored token");
         const user = decodeToken(token);
+        
         if (user) {
+          console.log("✅ Token is valid, user:", user);
           state.token = token;
           state.user = user;
           state.isAuthenticated = true;
           // Ensure token is stored in both places
           storeToken(token);
         } else {
-          // Token is invalid, remove it
+          console.log("❌ Token is invalid, removing...");
           removeToken();
         }
+      } else {
+        console.log("ℹ️ No stored token found");
       }
+      
       state.loading = false;
+      console.log("🏁 Auth initialization complete. Authenticated:", state.isAuthenticated);
     },
 
     // Login success
     loginSuccess: (state, action: PayloadAction<string>) => {
+      console.log("🚀 Login success action triggered");
       const token = action.payload;
+      console.log("🔑 Received token:", token);
+      
       const user = decodeToken(token);
       
       if (user) {
+        console.log("👤 Decoded user:", user);
+        
         state.token = token;
         state.user = user;
         state.isAuthenticated = true;
         
         // Store token in both localStorage and cookies
         storeToken(token);
+        
+        console.log("✅ Login state updated successfully");
+      } else {
+        console.log("❌ Failed to decode token");
       }
+      
       state.loading = false;
     },
 
     // Logout
     logout: (state) => {
+      console.log("👋 Logging out...");
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
@@ -110,6 +145,7 @@ export const authSlice = createSlice({
       
       // Remove token from both localStorage and cookies
       removeToken();
+      console.log("✅ Logout complete");
     },
 
     // Set loading state

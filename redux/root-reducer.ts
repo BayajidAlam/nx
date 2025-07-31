@@ -1,3 +1,4 @@
+// redux/root-reducer.ts - FIXED VERSION
 import { combineReducers } from "@reduxjs/toolkit";
 import { baseApi } from "./base-api";
 import authReducer from "./slices/auth/auth.slice";
@@ -8,5 +9,5 @@ export const rootReducer = combineReducers({
   auth: authReducer,
   sidebar: sidebarReducer,
   fullScreen: fullScreenReducer,
-  api: baseApi.reducer, // Key must match reducerPath
+  api: baseApi.reducer,
 });

@@ -1,3 +1,6 @@
+// app/(auth)/login/_components/login-form.tsx - COMPLETE VERSION
+"use client";
+
 import {
   Button,
   Form,
@@ -8,14 +11,14 @@ import {
   FormMessage,
   Input,
 } from "@/components/ui";
-import { useAppDispatch } from "@/hooks/use-store";
-import { loginSuccess } from "@/redux/slices/auth/auth.slice";
+import { useAppDispatch, useAppSelector } from "@/hooks/use-store";
+import { loginSuccess, selectAuth } from "@/redux/slices/auth/auth.slice";
 import { useUserLoginMutation } from "@/redux/api/auth/auth.api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { loginFormSchema, loginFormValues } from "../schemas/login-form-schema";
@@ -25,8 +28,9 @@ export default function LoginForm() {
   const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
   
-  // Redux hook
+  // Redux hooks
   const [userLogin, { isLoading }] = useUserLoginMutation();
+  const authState = useAppSelector(selectAuth);
 
   const form = useForm<loginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -36,34 +40,41 @@ export default function LoginForm() {
     },
   });
 
+  // Debug: Watch auth state changes
+  useEffect(() => {
+    console.log("🔍 Auth state changed:", authState);
+  }, [authState]);
+
   const onSubmit = async (data: loginFormValues) => {
     try {
-      console.log("Login attempt with data:", data);
-      const result = await userLogin(data).unwrap();
+      console.log("📤 Submitting login with data:", data);
       
-      console.log("Login result:", result);
+      const result = await userLogin(data).unwrap();
+      console.log("📥 Login API result:", result);
       
       if (result.success) {
+        console.log("✅ Login successful, dispatching loginSuccess...");
+        
         // Store token and update auth state
         dispatch(loginSuccess(result.token));
         
-        console.log("Token dispatched, checking localStorage...");
-        
-        // Check if token was stored
-        const storedToken = localStorage.getItem("auth_token");
-        console.log("Stored token:", storedToken);
+        // Manual localStorage storage as backup
+        if (typeof window !== "undefined") {
+          localStorage.setItem("auth_token", result.token);
+          console.log("💾 Manual localStorage set:", localStorage.getItem("auth_token"));
+        }
         
         toast.success(result.message || "Login successful!");
         
-        // Force navigation after a small delay
-        console.log("Attempting navigation to /...");
+        // Check localStorage and navigate
         setTimeout(() => {
+          console.log("🔍 Final localStorage check:", localStorage.getItem("auth_token"));
+          console.log("🔍 Final auth state:", authState);
           router.push("/");
-          console.log("Navigation attempted");
-        }, 500);
+        }, 300);
       }
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       
       // Handle different error types
       const errorMessage = 
@@ -78,14 +89,7 @@ export default function LoginForm() {
 
   return (
     <Form {...form}>
-      <form 
-        onSubmit={(e) => {
-          e.preventDefault(); // CRITICAL: Prevent default form submission
-          console.log("Form submitted");
-          form.handleSubmit(onSubmit)(e);
-        }} 
-        className="space-y-4"
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="phone"
@@ -163,11 +167,7 @@ export default function LoginForm() {
           </Button>
         </div>
 
-        <Button 
-          className="w-full mt-2" 
-          type="submit" 
-          disabled={isLoading}
-        >
+        <Button className="w-full mt-2" type="submit" disabled={isLoading}>
           {isLoading ? "wait..." : "Login"}
         </Button>
       </form>
